@@ -1,2 +1,2 @@
 # code-sample
-Code Sample for innogames
+Code Sample for InnoGames
