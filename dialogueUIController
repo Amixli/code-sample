@@ -1,0 +1,102 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+
+using DG.Tweening;
+
+using UnityEngine;
+using UnityEngine.EventSystems;
+
+public class DialogueUIController : MonoBehaviour
+{
+    public static event Action<Dialogue> DialogueEnded;
+    
+    [SerializeField] private DialogueBox dialogueBox;
+    
+    private Dialogue currentDialogue;
+    private int currentIndex;
+
+    private bool inGerman;
+
+   private void Awake()
+    {
+        dialogueBox.gameObject.SetActive(false);
+    }
+
+    private void OnEnable()
+    {
+        DialogueBox.ContinuingDialogue += AdvanceDialogueOnContinuing;
+    }
+
+    private void OnDisable()
+    {
+        DialogueBox.ContinuingDialogue -= AdvanceDialogueOnContinuing;
+    }
+
+    public void StartDialogue(Dialogue dialogue)
+    {
+        if (PlayerPrefs.HasKey("CurrentLanguage"))
+        {
+            int currentLanguage = PlayerPrefs.GetInt("CurrentLanguage");
+
+            inGerman = currentLanguage == 1;
+        }
+        
+        if (currentDialogue != null)
+        {
+           currentDialogue.onDialogueEnd.Invoke(); 
+        }
+        else
+        {
+            OpenDialogue();
+        }
+        
+        currentDialogue = dialogue;
+        DisplayDialogue(0);
+    }
+
+    private void OpenDialogue()
+    {
+        dialogueBox.gameObject.SetActive(true);
+        dialogueBox.DOShow();
+    }
+
+    private void DisplayDialogue(int index)
+    {
+        if (index >= currentDialogue.entries.Count)
+        {
+            CloseDialogue();
+            return;
+        }
+
+        currentIndex = index;
+        dialogueBox.DisplayDialogueEntry(currentDialogue.entries[currentIndex], inGerman);
+    }
+
+    private void AdvanceDialogueOnContinuing(DialogueBox _)
+    {
+        currentIndex++;
+        DisplayDialogue(currentIndex);
+    }
+
+    private void CloseDialogue()
+    {
+        Dialogue finishedDialogue = currentDialogue;
+
+        currentDialogue = null;
+        currentIndex = 0;
+        EventSystem.current.SetSelectedGameObject(null);
+
+        dialogueBox.DOHide().OnComplete(() =>
+        {
+            dialogueBox.gameObject.SetActive(false);
+        });
+        
+        finishedDialogue.onDialogueEnd.Invoke();
+        
+        if (DialogueEnded != null)
+        {
+            DialogueEnded.Invoke(finishedDialogue);
+        }
+    }
+}
